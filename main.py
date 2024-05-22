@@ -42,39 +42,52 @@ def read_file(file_path, is_kestrel):
     """
     try:
         if file_path.endswith('.xlsx'):
-            if is_kestrel:
-                df = pd.read_excel(file_path, skiprows=5, usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
-                df.rename(columns={df.columns[0]: 'Timestamp', df.columns[1]: 'Temperature',
-                                   df.columns[2]: 'Relative Humidity', df.columns[3]: 'Station Pressure'}, inplace=True)
-                df = df[['Timestamp', 'Temperature', 'Relative Humidity', 'Station Pressure'] + df.columns[4:].tolist()]
-                df['Timestamp'] = pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %I:%M:%S %p', errors='coerce').dt.strftime('%H:%M:%S')
-            else:
-                xl = pd.ExcelFile(file_path)
-                df_dict = {sheet: xl.parse(sheet, skiprows=1, usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8]) for sheet in xl.sheet_names}
-                for sheet, df in df_dict.items():
-                    df.rename(columns={df.columns[5]: 'Timestamp'}, inplace=True)
-                    df['Timestamp'] = pd.to_datetime(df['Timestamp'], format='%H:%M:%S', errors='coerce').dt.strftime('%H:%M:%S')
-                return df_dict
+            return read_excel(file_path, is_kestrel)
         elif file_path.endswith('.csv'):
-            if is_kestrel:
-                df = pd.read_csv(file_path, skiprows=5)
-                df.columns = [
-                    'Timestamp', 'Temperature', 'Relative Humidity', 'Station Pressure',
-                    'Heat Index', 'Dew Point', 'Density Altitude', 'Data Type',
-                    'Record name', 'Start time', 'Duration (H:M:S)', 'Location description',
-                    'Location address', 'Location coordinates', 'Notes'
-                ]
-                df['Timestamp'] = pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %I:%M:%S %p', errors='coerce').dt.strftime('%H:%M:%S')
-                df = df[['Timestamp', 'Temperature', 'Relative Humidity', 'Station Pressure'] + df.columns[4:].tolist()]
-            else:
-                df = pd.read_csv(file_path, skiprows=1, usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8])
-                df['Timestamp'] = pd.to_datetime(df['Timestamp'], format='%H:%M:%S', errors='coerce').dt.strftime('%H:%M:%S')
+            return read_csv(file_path, is_kestrel)
         else:
             raise ValueError("Unsupported file format. Please provide an Excel or CSV file.")
-        return df
     except Exception as e:
         print(f"Error in read_file: {e}")
         raise
+
+
+def read_excel(file_path, is_kestrel):
+    """
+    Read Excel file for Kestrel or Garmin data.
+    """
+    if is_kestrel:
+        df = pd.read_excel(file_path, skiprows=5, usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+        df.rename(columns={df.columns[0]: 'Timestamp', df.columns[1]: 'Temperature',
+                           df.columns[2]: 'Relative Humidity', df.columns[3]: 'Station Pressure'}, inplace=True)
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %I:%M:%S %p', errors='coerce').dt.strftime('%H:%M:%S')
+    else:
+        xl = pd.ExcelFile(file_path)
+        df_dict = {sheet: xl.parse(sheet, skiprows=1, usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8]) for sheet in xl.sheet_names}
+        for df in df_dict.values():
+            df.rename(columns={df.columns[5]: 'Timestamp'}, inplace=True)
+            df['Timestamp'] = pd.to_datetime(df['Timestamp'], format='%H:%M:%S', errors='coerce').dt.strftime('%H:%M:%S')
+        return df_dict
+    return df
+
+
+def read_csv(file_path, is_kestrel):
+    """
+    Read CSV file for Kestrel or Garmin data.
+    """
+    if is_kestrel:
+        df = pd.read_csv(file_path, skiprows=5)
+        df.columns = [
+            'Timestamp', 'Temperature', 'Relative Humidity', 'Station Pressure',
+            'Heat Index', 'Dew Point', 'Density Altitude', 'Data Type',
+            'Record name', 'Start time', 'Duration (H:M:S)', 'Location description',
+            'Location address', 'Location coordinates', 'Notes'
+        ]
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'], format='%Y-%m-%d %I:%M:%S %p', errors='coerce').dt.strftime('%H:%M:%S')
+    else:
+        df = pd.read_csv(file_path, skiprows=1, usecols=[0, 1, 2, 3, 4, 5, 6, 7, 8])
+        df['Timestamp'] = pd.to_datetime(df['Timestamp'], format='%H:%M:%S', errors='coerce').dt.strftime('%H:%M:%S')
+    return df
 
 
 def generate_unique_filename(filepath):
@@ -127,32 +140,18 @@ def process_files(kestrel_path, garmin_path):
         print(f"Error in process_files: {e}")
 
 
-def select_kestrel_file():
+def select_file(entry_widget, is_kestrel):
     """
-    Open file dialog to select the Kestrel file.
-    """
-    try:
-        kestrel_path = filedialog.askopenfilename(title="Select Kestrel File", filetypes=[("Excel and CSV files", "*.xlsx;*.csv")])
-        if kestrel_path:
-            kestrel_entry.delete(0, tk.END)
-            kestrel_entry.insert(0, kestrel_path)
-    except Exception as e:
-        messagebox.showerror("Error", f"An error occurred while selecting the Kestrel file: {e}")
-        print(f"Error in select_kestrel_file: {e}")
-
-
-def select_garmin_file():
-    """
-    Open file dialog to select the Garmin file.
+    Open file dialog to select the file and update the entry widget.
     """
     try:
-        garmin_path = filedialog.askopenfilename(title="Select Garmin File", filetypes=[("Excel and CSV files", "*.xlsx;*.csv")])
-        if garmin_path:
-            garmin_entry.delete(0, tk.END)
-            garmin_entry.insert(0, garmin_path)
+        file_path = filedialog.askopenfilename(title="Select File", filetypes=[("Excel and CSV files", "*.xlsx;*.csv")])
+        if file_path:
+            entry_widget.delete(0, tk.END)
+            entry_widget.insert(0, file_path)
     except Exception as e:
-        messagebox.showerror("Error", f"An error occurred while selecting the Garmin file: {e}")
-        print(f"Error in select_garmin_file: {e}")
+        messagebox.showerror("Error", f"An error occurred while selecting the file: {e}")
+        print(f"Error in select_file: {e}")
 
 
 def combine_files():
@@ -186,7 +185,7 @@ if __name__ == "__main__":
     kestrel_label.pack(side=tk.LEFT)
     kestrel_entry = tk.Entry(kestrel_frame, width=50)
     kestrel_entry.pack(side=tk.LEFT, padx=5)
-    kestrel_button = tk.Button(kestrel_frame, text="Browse", command=select_kestrel_file)
+    kestrel_button = tk.Button(kestrel_frame, text="Browse", command=lambda: select_file(kestrel_entry, True))
     kestrel_button.pack(side=tk.LEFT)
 
     garmin_frame = tk.Frame(root)
@@ -195,7 +194,7 @@ if __name__ == "__main__":
     garmin_label.pack(side=tk.LEFT)
     garmin_entry = tk.Entry(garmin_frame, width=50)
     garmin_entry.pack(side=tk.LEFT, padx=5)
-    garmin_button = tk.Button(garmin_frame, text="Browse", command=select_garmin_file)
+    garmin_button = tk.Button(garmin_frame, text="Browse", command=lambda: select_file(garmin_entry, False))
     garmin_button.pack(side=tk.LEFT)
 
     combine_button = tk.Button(root, text="Combine Files", command=combine_files, pady=10, padx=20)
