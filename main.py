@@ -21,7 +21,7 @@ def find_closest(row, df):
 
 def process_garmin_sheet(sheet_name, garmin_df, kestrel_df):
     """
-    Process each Garmin sheet by renaming columns, formatting timestamps, and finding closest matches in Kestrel data.
+    Process each Garmin sheet by renaming columns, formatting timestamps, and finding the closest matches in Kestrel data.
     """
     try:
         print(f"Processing Garmin sheet: {sheet_name}")
@@ -41,7 +41,7 @@ def read_file(file_path, is_kestrel):
     Read the Kestrel or Garmin file based on the file extension and is_kestrel flag.
     """
     try:
-        if file_path.endswith('.xlsx'):
+        if file_path.endswith(('.xlsx', '.xls')):
             return read_excel(file_path, is_kestrel)
         elif file_path.endswith('.csv'):
             return read_csv(file_path, is_kestrel)
@@ -145,7 +145,7 @@ def select_file(entry_widget, is_kestrel):
     Open file dialog to select the file and update the entry widget.
     """
     try:
-        file_path = filedialog.askopenfilename(title="Select File", filetypes=[("Excel and CSV files", "*.xlsx;*.csv")])
+        file_path = filedialog.askopenfilename(title="Select File", filetypes=[("Excel and CSV files", "*.xlsx;*.xls;*.csv")])
         if file_path:
             entry_widget.delete(0, tk.END)
             entry_widget.insert(0, file_path)
@@ -164,7 +164,7 @@ def combine_files():
         messagebox.showwarning("Warning", "Please select both files")
         return
 
-    if not (kestrel_path.endswith(('.xlsx', '.csv')) and garmin_path.endswith(('.xlsx', '.csv'))):
+    if not (kestrel_path.endswith(('.xlsx', '.xls', '.csv')) and garmin_path.endswith(('.xlsx', '.xls', '.csv'))):
         messagebox.showwarning("Warning", "Selected files must be Excel or CSV files")
         return
 
